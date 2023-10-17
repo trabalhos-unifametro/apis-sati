@@ -3,18 +3,13 @@ package emails
 import (
 	"apis-sati/models"
 	"apis-sati/utils"
-	"crypto/tls"
 	"fmt"
-	"github.com/go-gomail/gomail"
 	"strings"
 )
 
 func SendEmailCodeRandom(user models.User) error {
 	code := strings.Split(user.CodeRecovery, "")
-	m := gomail.NewMessage()
-	m.SetHeader("From", utils.FROM)
-	m.SetHeader("To", utils.CheckToSend(user.Email))
-	m.SetHeader("Subject", "Código para recuperação de senha.")
+
 	body := fmt.Sprint(`<p style="font-size: 20px"><b>Olá</b> `, user.Name, `!</p>
 	   <p style="font-size: 20px">Segue abaixo o código para recuperar sua senha:</p>
 	   <table style="width: 500px; height: 50px; background-color: #1C6F77; border-radius: 5px">
@@ -44,23 +39,29 @@ func SendEmailCodeRandom(user models.User) error {
     </p>`)
 
 	template := MountLayoutTemplateEmail("Código para recuperação de senha", body)
+	_, err := MountEmail(template, "[S.A.T.I] - Código de verificação.", utils.CheckToSend(user.Email))
 
-	m.SetBody("text/html", template)
+	return err
+}
 
-	d := gomail.NewDialer(utils.SMTP, utils.PORT, utils.USERNAME, utils.PASSWORD)
+func SuccessfulRecoverPassword(user models.User) error {
+	body := fmt.Sprint(`<p style="font-size: 25px"><b>Olá</b> `, user.Name, `!</p>
+	   <p style="font-size: 25px">Sua senha foi recuperada com sucesso!</p>
+	   <p style="font-size: 25px; line-height: normal">
+		   Caso você não tenha realizado essa ação, por favor entre em contato conosco.<br/>
+		   S.A.T.I nunca solicita que você informe sua senha por e-mail.<br/>
+		   Não responda esta mensagem.
+	   </p>
+	`)
 
-	// Desabilitar a verificação de certificado SSL/TLS
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	err := d.DialAndSend(m)
-	// Send the email to Bob, Cora and Dan.
-	if err != nil {
-		return err
-	}
+	template := MountLayoutTemplateEmail("Senha recuperada com sucesso.", body)
+	_, err := MountEmail(template, "[S.A.T.I] - Recuperação de senha.", utils.CheckToSend(user.Email))
+
 	return err
 }
 
 func MountLayoutTemplateEmail(title, body string) string {
-	return fmt.Sprintln(`<!-- Inliner Build Version 4380b7741bb759d6cb997545f3add21ad48f010b -->
+	return fmt.Sprint(`<!-- Inliner Build Version 4380b7741bb759d6cb997545f3add21ad48f010b -->
 	<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 	<html lang="pt" xmlns="http://www.w3.org/1999/xhtml" xmlns="http://www.w3.org/1999/xhtml">
 	<head>

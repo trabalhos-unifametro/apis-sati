@@ -5,6 +5,7 @@ import (
 	"apis-sati/utils"
 	"fmt"
 	"gorm.io/gorm"
+	"regexp"
 	"time"
 )
 
@@ -24,14 +25,17 @@ type User struct {
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
-type ResponseUser struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	Role      string    `json:"role"`
-	Email     string    `json:"email"`
-	Cellphone string    `json:"cellphone"`
-	Token     string    `json:"token"`
-	CreatedAt time.Time `json:"created_at"`
+type DataUser struct {
+	ID                 uint      `json:"id,omitempty"`
+	Name               string    `json:"name,omitempty"`
+	Role               string    `json:"role,omitempty"`
+	Email              string    `json:"email,omitempty"`
+	Cellphone          string    `json:"cellphone,omitempty"`
+	NewPassword        string    `json:"new_password,omitempty"`
+	ConfirmNewPassword string    `json:"confirm_new_password,omitempty"`
+	CodeRecovery       string    `json:"code_recovery,omitempty"`
+	Token              string    `json:"token,omitempty"`
+	CreatedAt          time.Time `json:"created_at,omitempty"`
 }
 
 func (u *User) FindByEmail() error {
@@ -45,6 +49,27 @@ func (u *User) FindByEmail() error {
 
 	if err = database.CloseConnection(db); err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.FindUserEmail()", Body: err.Error()}.Error()
+	}
+	return err
+}
+
+func (u *User) FindByEmailAndCodeRecovery() error {
+	db := database.OpenConnection()
+	var dateCurrent = time.Now().Format("2006-01-02")
+	var minutes = time.Now().Minute()
+	where := fmt.Sprint(`email ILIKE '`, u.Email, `'`,
+		` AND code_recovery = '`, u.CodeRecovery, `'`,
+		`AND expiration_code 
+			BETWEEN '`, dateCurrent, ' ', minutes-5, `:00' AND '`, dateCurrent, ' ', minutes, `:00'`)
+	err := db.Table("users").
+		Select("id, name, role, email, cellphone, password_digest, password, created_at").
+		Where(where).Find(&u).Error
+	if err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on *User.FindByEmailAndCodeRecovery()", Body: err.Error()}.Error()
+	}
+
+	if err = database.CloseConnection(db); err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.FindByEmailAndCodeRecovery()", Body: err.Error()}.Error()
 	}
 	return err
 }
@@ -92,19 +117,65 @@ func (u *User) ConfirmCodeRecover() bool {
 	return true
 }
 
-func (u *User) UpdateExpirationCode() bool {
+func (u DataUser) ValidationRecoverPassword() (bool, string) {
+
+	regLowerCase, _ := regexp.Compile(`[A-Z]`)
+	regUpperCase, _ := regexp.Compile(`[A-Z]`)
+	regSpecialCharacters, _ := regexp.Compile("[`!@#$%^&*()_+-=[]{};':\"|,.<>/?~]")
+	regNumbers, _ := regexp.Compile(`[0-9]`)
+
+	if utils.IsEmpty(u.Email) {
+		return false, "Por favor, informe o email."
+	}
+	if utils.IsEmpty(u.CodeRecovery) {
+		return false, "Por favor, informe o código de verificação."
+	}
+	if utils.IsEmpty(u.NewPassword) {
+		return false, "Por favor, informe a nova senha."
+	}
+	if utils.IsEmpty(u.ConfirmNewPassword) {
+		return false, "Por favor, confirme a nova senha."
+	}
+	if len(u.NewPassword) < 8 {
+		return false, "A nova senha precisa conter no mínimo 8 caracteres."
+	}
+	if !regLowerCase.MatchString(u.NewPassword) {
+		return false, "A nova senha precisa conter no mínimo 1 caractere minúsculo."
+	}
+	if !regUpperCase.MatchString(u.NewPassword) {
+		return false, "A nova senha precisa conter no mínimo 1 caractere maiúsculo."
+	}
+	if !regSpecialCharacters.MatchString(u.NewPassword) {
+		return false, "A nova senha precisa conter no mínimo 1 caractere especial."
+	}
+	if !regNumbers.MatchString(u.NewPassword) {
+		return false, "A nova senha precisa conter no mínimo 1 caractere numérico."
+	}
+	if u.ConfirmNewPassword != u.NewPassword {
+		return false, "As senhas estão diferentes."
+	}
+	return true, ""
+}
+
+func (u *User) UpdatePassword() bool {
 	db := database.OpenConnection()
 	var success bool
+	var dateCurrent = time.Now().Format("2006-01-02")
+	var minutes = time.Now().Minute()
+	where := fmt.Sprint(`id = `, u.ID, `
+			AND code_recovery = '`, u.CodeRecovery, `'
+			AND expiration_code 
+			BETWEEN '`, dateCurrent, ' ', minutes-10, `:00' AND '`, dateCurrent, ' ', minutes, `:00'`)
 	err := db.Table("users").
-		Where("id = ?", u.ID).
-		Updates(map[string]interface{}{"expiration_code": time.Now().Add(time.Minute * 30)}).Error
+		Where(where).
+		Updates(map[string]interface{}{"password": u.PasswordDigest, "updated_at": time.Now()}).Error
 	if err != nil {
 		success = false
 	} else {
 		success = true
 	}
 	if err = database.CloseConnection(db); err != nil {
-		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.UpdateExpirationCode()", Body: err.Error()}.Error()
+		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.UpdatePassword()", Body: err.Error()}.Error()
 	}
 
 	return success

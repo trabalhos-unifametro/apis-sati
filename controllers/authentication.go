@@ -26,7 +26,7 @@ func SignIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Usuário não cadastrado na base.")
 	}
 
-	errPassword := utils.ToComparePassword(user.PasswordDigest, user.Password)
+	errPassword := utils.ComparePassword(user.PasswordDigest, user.Password)
 
 	if user.ID > 0 {
 		if errPassword == nil {
@@ -37,7 +37,7 @@ func SignIn(c *fiber.Ctx) error {
 			}
 
 			generatedToken, _ := jwtWrapper.GenerateToken(int(user.ID))
-			response := models.ResponseUser{
+			response := models.DataUser{
 				ID:        user.ID,
 				Name:      user.Name,
 				Email:     user.Email,
@@ -101,11 +101,34 @@ func ConfirmCode(c *fiber.Ctx) error {
 	}
 
 	if user.ConfirmCodeRecover() {
-		if user.UpdateExpirationCode() {
-			return c.Status(fiber.StatusOK).JSON("Código validado com sucesso!")
-		} else {
-			return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar validar código.")
-		}
+		return c.Status(fiber.StatusOK).JSON("Código validado com sucesso!")
+	} else {
+		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar validar código.")
+	}
+}
+
+func RecoverPassword(c *fiber.Ctx) error {
+	body := c.Body()
+	dataUser := models.DataUser{}
+	user := models.User{}
+
+	if err := json.Unmarshal(body, &dataUser); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Estrutura de dados incorreta!")
+	}
+	user.Email = dataUser.Email
+	user.CodeRecovery = dataUser.CodeRecovery
+
+	if isValid, message := dataUser.ValidationRecoverPassword(); !isValid {
+		return c.Status(fiber.StatusBadRequest).JSON(message)
+	}
+
+	if err := user.FindByEmailAndCodeRecovery(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Usuário não cadastrado na base.")
+	}
+
+	user.PasswordDigest = utils.EncryptPassword(dataUser.NewPassword)
+	if user.UpdatePassword() {
+		return c.Status(fiber.StatusOK).JSON("Código validado com sucesso!")
 	} else {
 		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar validar código.")
 	}

@@ -25,6 +25,7 @@ func Routes() *fiber.App {
 	v1.Post("/auth/signin", controllers.SignIn)
 	v1.Post("/auth/generate_code", controllers.GenerateCodeRecoverPassword)
 	v1.Post("/auth/confirm_code", controllers.ConfirmCode)
+	v1.Put("/auth/recover_password", controllers.RecoverPassword)
 
 	return app
 }

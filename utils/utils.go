@@ -4,16 +4,12 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
-	"strconv"
 	"strings"
 )
 
 var (
-	SMTP     string
-	USERNAME string
-	PASSWORD string
+	MANDRILL string
 	FROM     string
-	PORT     int
 )
 
 func IsEmpty(value string) bool {
@@ -23,7 +19,16 @@ func IsEmpty(value string) bool {
 	return false
 }
 
-func ToComparePassword(password1, password2 string) error {
+func EncryptPassword(password string) string {
+	passwordByte := []byte(password)
+	hashedPassword, err := bcrypt.GenerateFromPassword(passwordByte, bcrypt.DefaultCost)
+	if err != nil {
+		LogMessage{Title: "[MAIN>UTILS] Error on EncryptPassword()", Body: err.Error()}.Error()
+	}
+	return string(hashedPassword)
+}
+
+func ComparePassword(password1, password2 string) error {
 	return bcrypt.CompareHashAndPassword(
 		[]byte(password1),
 		[]byte(password2),
@@ -43,13 +48,10 @@ func GenerateCode(n int) string {
 func LoadENVs() {
 	viper.SetConfigFile(".env")
 	if err := viper.ReadInConfig(); err != nil {
-		LogMessage{Title: "[MAIN] Error on *User.FindUserEmail()", Body: err.Error()}.Error()
+		LogMessage{Title: "[MAIN>UTILS] Error on LoadENVs()", Body: err.Error()}.Error()
 	}
-	SMTP = viper.GetString("SMTP")
-	USERNAME = viper.GetString("USERNAME")
-	PASSWORD = viper.GetString("PASSWORD_EMAIL")
+	MANDRILL = viper.GetString("MANDRILL")
 	FROM = viper.GetString("FROM")
-	PORT, _ = strconv.Atoi(viper.GetString("PORT"))
 }
 
 func CheckToSend(emails string) string {
