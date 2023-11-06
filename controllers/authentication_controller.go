@@ -128,8 +128,12 @@ func RecoverPassword(c *fiber.Ctx) error {
 
 	user.PasswordDigest = utils.EncryptPassword(dataUser.NewPassword)
 	if user.UpdatePassword() {
-		return c.Status(fiber.StatusOK).JSON("Código validado com sucesso!")
+		if err := emails.SuccessfulRecoverPassword(user); err == nil {
+			return c.Status(fiber.StatusOK).JSON("Nova senha atualizada com sucesso!")
+		} else {
+			return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar enviar email de nova senha.")
+		}
 	} else {
-		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar validar código.")
+		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar atualizar nova senha.")
 	}
 }

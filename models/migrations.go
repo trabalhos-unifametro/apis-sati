@@ -22,6 +22,9 @@ func RunMigrations() {
 	if err := db.AutoMigrate(Patient{}); err != nil {
 		utils.LogMessage{Title: "[MIGRATIONS] Error on db.AutoMigrate(Patient{})", Body: err.Error()}.Error()
 	}
+	if err := db.AutoMigrate(Status{}); err != nil {
+		utils.LogMessage{Title: "[MIGRATIONS] Error on db.AutoMigrate(Status{})", Body: err.Error()}.Error()
+	}
 	if err := db.AutoMigrate(Unit{}); err != nil {
 		utils.LogMessage{Title: "[MIGRATIONS] Error on db.AutoMigrate(Unit{})", Body: err.Error()}.Error()
 	}

@@ -15,8 +15,6 @@ func ValidateTokenSession(c *fiber.Ctx) (auth.JwtClaim, error) {
 		if err == nil {
 			return *claims, err
 		} else {
-			c.Status(401)
-			c.JSON("Você não tem acesso a essa rota ")
 			return auth.JwtClaim{}, errors.New("Você não tem acesso a essa rota!")
 		}
 	} else {

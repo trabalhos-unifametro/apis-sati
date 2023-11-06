@@ -12,22 +12,14 @@ type JwtWrapper struct {
 	ExpirationHours int64
 }
 
-// JwtClaim adds email as a claim to the token
 type JwtClaim struct {
-	UsuarioId int
+	UserID int
 	jwt.StandardClaims
 }
 
-type JwtClaimSignature struct {
-	UsuarioId int
-	Origem    string
-	jwt.StandardClaims
-}
-
-// GenerateToken generates a jwt token
-func (j *JwtWrapper) GenerateToken(usuarioId int) (signedToken string, err error) {
+func (j *JwtWrapper) GenerateToken(UserID int) (signedToken string, err error) {
 	claims := &JwtClaim{
-		UsuarioId: usuarioId,
+		UserID: UserID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(j.ExpirationHours)).Unix(),
 			Issuer:    j.Issuer,
@@ -38,33 +30,12 @@ func (j *JwtWrapper) GenerateToken(usuarioId int) (signedToken string, err error
 
 	signedToken, err = token.SignedString([]byte(j.SecretKey))
 	if err != nil {
-		return
+		return "", err
 	}
 
-	return
+	return signedToken, nil
 }
 
-func (j *JwtWrapper) GenerateTokenSignature(usuarioId int, origin string) (signedToken string, err error) {
-	claims := &JwtClaimSignature{
-		UsuarioId: usuarioId,
-		Origem:    origin,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(j.ExpirationHours)).Unix(),
-			Issuer:    j.Issuer,
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	signedToken, err = token.SignedString([]byte(j.SecretKey))
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-// ValidateToken validates the jwt token
 func (j *JwtWrapper) ValidateToken(signedToken string) (claims *JwtClaim, err error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
@@ -75,18 +46,16 @@ func (j *JwtWrapper) ValidateToken(signedToken string) (claims *JwtClaim, err er
 	)
 
 	if err != nil {
-		return
+		return &JwtClaim{}, err
 	}
 
 	claims, ok := token.Claims.(*JwtClaim)
 	if !ok {
-		err = errors.New("Couldn't parse claims")
-		return
+		return &JwtClaim{}, errors.New("Couldn't parse claims")
 	}
 
 	if claims.ExpiresAt < time.Now().Local().Unix() {
-		err = errors.New("JWT expirou")
-		return
+		return &JwtClaim{}, errors.New("JWT expirou")
 	}
-	return
+	return claims, nil
 }
