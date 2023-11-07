@@ -6,7 +6,7 @@ import (
 )
 
 func TotalizatorsUnitsDashboard(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		var unit models.Unit
 		var totalizators models.UnitTotalizatorsDashboard
 		unitName := c.Query("unit_name")
@@ -23,7 +23,7 @@ func TotalizatorsUnitsDashboard(c *fiber.Ctx) error {
 }
 
 func GraphicUnitsDashboard(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		var unit models.Unit
 		var graphic models.UnitGraphicDashboard
 
@@ -38,7 +38,7 @@ func GraphicUnitsDashboard(c *fiber.Ctx) error {
 }
 
 func ListUnits(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		var unit models.Unit
 		var list []models.ResponseUnit
 		unitName := c.Query("unit_name")
@@ -57,7 +57,7 @@ func ListUnits(c *fiber.Ctx) error {
 }
 
 func TotalizatorsUnit(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		id, err := c.ParamsInt("id")
 		patientName := c.Query("patient_name")
 		situationPatient := c.Query("situation_patient")
@@ -73,6 +73,30 @@ func TotalizatorsUnit(c *fiber.Ctx) error {
 		}
 
 		return c.Status(fiber.StatusOK).JSON(totalizators)
+	} else {
+		return c.Status(fiber.StatusUnauthorized).JSON("Você não tem acesso a essa rota ")
+	}
+}
+
+func ListPatientsByUnit(c *fiber.Ctx) error {
+	if _, err := ValidateTokenSession(c); err == nil {
+		id, err := c.ParamsInt("id")
+		patientName := c.Query("patient_name")
+		situationPatient := c.Query("situation_patient")
+		sortByPatient := c.Query("sort_by_patient")
+
+		var unit = models.Unit{ID: uint(id)}
+		var list []models.ResponsePatientByUnit
+
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON("Informe o ID correto da unidade.")
+		}
+
+		if err, list = unit.GetListPatientsByUnit(patientName, situationPatient, sortByPatient); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON("Ocorreu um erro ao carregar os pacientes da unidade.")
+		}
+
+		return c.Status(fiber.StatusOK).JSON(list)
 	} else {
 		return c.Status(fiber.StatusUnauthorized).JSON("Você não tem acesso a essa rota ")
 	}

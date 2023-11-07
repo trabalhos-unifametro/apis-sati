@@ -49,6 +49,29 @@ type ResponseUnit struct {
 	Status                 string `json:"status"`
 }
 
+type ResponsePatientByUnit struct {
+	PatientID                   int       `json:"patient_id"`
+	UnitID                      int       `json:"unit_id"`
+	HospitalizationCode         int       `json:"hospitalization_code"`
+	PatientName                 string    `json:"patient_name"`
+	ExpectedHospitalizationTime time.Time `json:"expected_hospitalization_time"`
+	CurrentHospitalizationTime  time.Time `json:"current_hospitalization_time"`
+	Situation                   string    `json:"situation"`
+	SituationID                 int       `json:"situation_id"`
+	MedicalRecordID             int       `json:"medical_record_id"`
+	MotherName                  string    `json:"mother_name"`
+	Cpf                         string    `json:"cpf"`
+	Gender                      string    `json:"gender"`
+	UnitName                    string    `json:"unit_name"`
+	Street                      string    `json:"street"`
+	Neighborhood                string    `json:"neighborhood"`
+	Number                      string    `json:"number"`
+	City                        string    `json:"city"`
+	State                       string    `json:"state"`
+	ZipCode                     string    `json:"zip_code"`
+	Complement                  string    `json:"complement"`
+}
+
 func (u *Unit) TotalizatorsDashboard(unitName, occupation string) (error, UnitTotalizatorsDashboard) {
 	db := database.OpenConnection()
 	var totalizators UnitTotalizatorsDashboard
@@ -194,4 +217,52 @@ func (u *Unit) Totalizators(patientName, situationPatient string) (error, UnitTo
 		utils.LogMessage{Title: "[MODELS>UNIT] Error on database.CloseConnection(db) > *Unit.Totalizators()", Body: err.Error()}.Error()
 	}
 	return err, totalizators
+}
+
+func (u *Unit) GetListPatientsByUnit(patientName, situationPatient, sortByPatient string) (error, []ResponsePatientByUnit) {
+	db := database.OpenConnection()
+	var list []ResponsePatientByUnit
+	where := fmt.Sprint("u.id = ", u.ID, " AND m.status_id = 1")
+	var order string
+
+	if len(strings.TrimSpace(patientName)) > 0 {
+		where += fmt.Sprint(` AND p.name ILIKE '%`, patientName, `%'`)
+	}
+
+	if strings.ToUpper(situationPatient) == "DENTRO DO PERÍODO" {
+		where += " AND m.current_hospitalization_time <= m.expected_hospitalization_time"
+	} else if strings.ToUpper(situationPatient) == "FORA DO PERÍODO" {
+		where += " AND m.current_hospitalization_time > m.expected_hospitalization_time"
+	}
+
+	if strings.ToUpper(sortByPatient) == "CRESCENTE" {
+		order += "p.name ASC"
+	} else if strings.ToUpper(sortByPatient) == "DECRESCENTE" {
+		order += "p.name DESC"
+	}
+
+	err := db.Table("units u").
+		Select(`DISTINCT p.id as patient_id,
+			u.id as unit_id, m.hospitalization_code, p.name as patient_name, m.expected_hospitalization_time, m.current_hospitalization_time,
+			(CASE WHEN m.current_hospitalization_time > m.expected_hospitalization_time THEN 'Fora do período' ELSE 'Dentro do período' END) as situation,
+			(CASE WHEN m.current_hospitalization_time > m.expected_hospitalization_time THEN 2 ELSE 1 END) as situation_id,
+			m.id as medical_record_id, p.mother_name, p.cpf, p.gender, u.name as unit_name,
+			a.street, a.neighborhood, a.number, a.complement, a.zip_code, c.name as city, s.abbreviation as state`).
+		Joins("LEFT JOIN medical_records m ON m.unit_id = u.id").
+		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
+		Joins("LEFT JOIN addresses a ON a.id = p.address_id").
+		Joins("LEFT JOIN cities c ON c.id = a.city_id").
+		Joins("LEFT JOIN states s ON s.id = a.state_id").
+		Where(where).
+		Order(order).
+		Scan(&list).Error
+
+	if err != nil {
+		utils.LogMessage{Title: "[MODELS>UNIT] Error on *Unit.GetListPatientsByUnit()", Body: err.Error()}.Error()
+	}
+
+	if err = database.CloseConnection(db); err != nil {
+		utils.LogMessage{Title: "[MODELS>UNIT] Error on database.CloseConnection(db) > *Unit.GetListPatientsByUnit()", Body: err.Error()}.Error()
+	}
+	return err, list
 }

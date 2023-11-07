@@ -38,6 +38,10 @@ func Routes() *fiber.App {
 			// UNITS ROUTES ============================================================================
 			v1.Get("/units/list", controllers.ListUnits)
 			v1.Get("/units/totalizators/:id", controllers.TotalizatorsUnit)
+			v1.Get("/units/patients/:id", controllers.ListPatientsByUnit)
+
+			// MEDICAL RECORD ROUTES ===================================================================
+			v1.Get("/medical_record/find_by_id/:id", controllers.GetMedicalRecord)
 		}
 	}
 

@@ -47,6 +47,32 @@ type MonthlyChart struct {
 	TotalOccupation     int `json:"total_occupation"`
 }
 
+type ResponseMedicalRecord struct {
+	PatientID           int       `json:"patient_id"`
+	UnitID              int       `json:"unit_id"`
+	HospitalizationCode int       `json:"hospitalization_code"`
+	OpeningDate         time.Time `json:"opening_date"`
+	PatientName         string    `json:"patient_name"`
+	DateOfBirth         time.Time `json:"date_of_birth"`
+	Gender              string    `json:"gender"`
+	UnitName            string    `json:"unit_name"`
+	Street              string    `json:"street"`
+	Neighborhood        string    `json:"neighborhood"`
+	Number              string    `json:"number"`
+	City                string    `json:"city"`
+	State               string    `json:"state"`
+	ZipCode             string    `json:"zip_code"`
+	Complement          string    `json:"complement"`
+	Telephone           string    `json:"telephone"`
+	Email               string    `json:"email"`
+	CaregiverContact    string    `json:"caregiver_contact"`
+	Doctors             string    `json:"doctors"`
+	Schooling           string    `json:"schooling"`
+	Occupation          string    `json:"occupation"`
+	Limitation          string    `json:"limitation"`
+	Allergy             string    `json:"allergy"`
+}
+
 func (m *MedicalRecord) GraphicDashboard() (error, []MonthlyChart) {
 	db := database.OpenConnection()
 	year := time.Now().Year()
@@ -94,4 +120,32 @@ func (m *MedicalRecord) GraphicDashboard() (error, []MonthlyChart) {
 	}
 
 	return err, graphic
+}
+
+func (m *MedicalRecord) GetMedicalRecordByID() (error, ResponseMedicalRecord) {
+	db := database.OpenConnection()
+	var medicalRecord ResponseMedicalRecord
+
+	err := db.Table("medical_records m").
+		Select(`DISTINCT p.id,
+			m.hospitalization_code, m.opening_date, p.name as patient_name, p.date_of_birth, p.gender,
+			a.street, a.neighborhood, a.number, a.zip_code, a.complement, c.name as city, s.abbreviation as state,
+			p.telephone, p.email, m.caregiver_contact, m.doctors, m.schooling, m.occupation, m.limitation,
+			m.allergy, u.name as unit_name, u.id as unit_id`).
+		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
+		Joins("LEFT JOIN units u ON u.id = m.unit_id").
+		Joins("LEFT JOIN addresses a ON a.id = p.address_id").
+		Joins("LEFT JOIN cities c ON c.id = a.city_id").
+		Joins("LEFT JOIN states s ON s.id = a.state_id").
+		Where("m.id = ?", m.ID).
+		Scan(&medicalRecord).Error
+
+	if err != nil {
+		utils.LogMessage{Title: "[MODELS>MEDICAL_RECORD] Error on *MedicalRecord.GetMedicalRecordByID()", Body: err.Error()}.Error()
+	}
+
+	if err = database.CloseConnection(db); err != nil {
+		utils.LogMessage{Title: "[MODELS>MEDICAL_RECORD] Error on database.CloseConnection(db) > *MedicalRecord.GetMedicalRecordByID()", Body: err.Error()}.Error()
+	}
+	return err, medicalRecord
 }

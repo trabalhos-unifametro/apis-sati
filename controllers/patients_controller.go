@@ -6,7 +6,7 @@ import (
 )
 
 func TotalizatorsPatientsDashboard(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		var unit models.Patient
 		var totalizators models.PatientTotalizatorsDashboard
 
@@ -21,7 +21,7 @@ func TotalizatorsPatientsDashboard(c *fiber.Ctx) error {
 }
 
 func GraphicPatientsDashboard(c *fiber.Ctx) error {
-	if _, err := ValidateTokenSession(c); err != nil {
+	if _, err := ValidateTokenSession(c); err == nil {
 		var unit models.Patient
 		var graphic models.PatientGraphicDashboard
 
