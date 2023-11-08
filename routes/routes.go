@@ -42,6 +42,13 @@ func Routes() *fiber.App {
 
 			// MEDICAL RECORD ROUTES ===================================================================
 			v1.Get("/medical_record/find_by_id/:id", controllers.GetMedicalRecord)
+
+			// PATIENTS ROUTES =========================================================================
+			v1.Get("/patients/totalizators", controllers.TotalizatorsPatients)
+			v1.Get("/patients/list", controllers.ListPatients)
+
+			// STATUS ROUTES ===========================================================================
+			v1.Get("/status/list", controllers.ListStatusPatients)
 		}
 	}
 
