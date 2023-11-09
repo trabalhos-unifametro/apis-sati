@@ -28,6 +28,9 @@ func Routes() *fiber.App {
 			v1.Post("/auth/confirm_code", controllers.ConfirmCode)
 			v1.Put("/auth/recover_password", controllers.RecoverPassword)
 
+			// USER ROUTES =============================================================================
+			v1.Put("/user/update", controllers.UpdateDataUser)
+
 			// DASHBOARD ROUTES ========================================================================
 			v1.Get("/dashboard/units/totalizators", controllers.TotalizatorsUnitsDashboard)
 			v1.Get("/dashboard/units/graphic", controllers.GraphicUnitsDashboard)

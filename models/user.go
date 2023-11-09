@@ -15,7 +15,7 @@ type User struct {
 	Name           string         `gorm:"type:varchar(200)" rql:"filter" json:"name"`
 	Role           string         `gorm:"type:varchar(100)" rql:"filter" json:"role"`
 	Email          string         `gorm:"type:varchar(100)" rql:"filter" json:"email"`
-	Cellphone      string         `gorm:"type:varchar(15)" rql:"filter" json:"cellphone"`
+	Cellphone      string         `gorm:"type:varchar(16)" rql:"filter" json:"cellphone"`
 	CodeRecovery   string         `gorm:"type:varchar(7)" rql:"filter" json:"code_recovery"`
 	Password       string         `gorm:"type:varchar(100)" rql:"filter" json:"password"`
 	PasswordDigest string         `gorm:"type:varchar(100)" rql:"filter" json:"password_digest"`
@@ -179,4 +179,40 @@ func (u *User) UpdatePassword() bool {
 	}
 
 	return success
+}
+
+func (u *User) FindUserByEmailAndID() bool {
+	db := database.OpenConnection()
+	var exists bool
+	err := db.Table("users").
+		Select("(CASE WHEN COUNT(*) > 0 THEN true ELSE false END) as exists").
+		Where("email ILIKE ? AND id <> ?", u.Email, u.ID).
+		Limit(1).
+		Scan(&exists).Error
+
+	if err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on *User.FindUserByEmailAndID()", Body: err.Error()}.Error()
+	}
+
+	if err = database.CloseConnection(db); err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.FindUserByEmailAndID()", Body: err.Error()}.Error()
+	}
+
+	return exists
+}
+
+func (u *User) Update() error {
+	db := database.OpenConnection()
+
+	err := db.Table("users").
+		Where("id = ? ", u.ID).
+		Updates(map[string]interface{}{"email": u.Email, "cellphone": u.Cellphone, "updated_at": time.Now()}).Error
+	if err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on *User.Update()", Body: err.Error()}.Error()
+	}
+
+	if err = database.CloseConnection(db); err != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.Update()", Body: err.Error()}.Error()
+	}
+	return err
 }

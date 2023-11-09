@@ -137,3 +137,34 @@ func RecoverPassword(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar atualizar nova senha.")
 	}
 }
+
+func UpdateDataUser(c *fiber.Ctx) error {
+	if session, err := ValidateTokenSession(c); err == nil {
+		body := c.Body()
+		user := models.User{}
+
+		if err := json.Unmarshal(body, &user); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON("Estrutura de dados incorreta!")
+		}
+
+		if uint(session.UserID) != user.ID {
+			return c.Status(fiber.StatusBadRequest).JSON("Identificador do usuário está incorreto!")
+		}
+
+		if exists := user.FindUserByEmailAndID(); exists {
+			return c.Status(fiber.StatusBadRequest).JSON("Email já está em uso, escolha outro.")
+		}
+
+		if utils.IsEmpty(user.Email) || utils.IsEmpty(user.Cellphone) {
+			return c.Status(fiber.StatusBadRequest).JSON("É obrigatório informar email e telefone.")
+		}
+
+		if err = user.Update(); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON("Ocorreu um erro ao atualizar os dados do usuário.")
+		}
+
+		return c.Status(fiber.StatusOK).JSON("Dados atualizados com sucesso!")
+	} else {
+		return c.Status(fiber.StatusUnauthorized).JSON("Você não tem acesso a essa rota ")
+	}
+}
