@@ -7,7 +7,6 @@ import (
 	"apis-sati/utils"
 	"encoding/json"
 	"github.com/gofiber/fiber/v2"
-	"github.com/spf13/viper"
 )
 
 func SignIn(c *fiber.Ctx) error {
@@ -31,7 +30,7 @@ func SignIn(c *fiber.Ctx) error {
 	if user.ID > 0 {
 		if errPassword == nil {
 			jwtWrapper := auth.JwtWrapper{
-				SecretKey:       viper.GetString("JWT_SECRET_KEY"),
+				SecretKey:       utils.GodotEnv("JWT_SECRET_KEY"),
 				Issuer:          "AuthService",
 				ExpirationHours: 120,
 			}

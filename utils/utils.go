@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
+	"os"
 	"strings"
 )
 
@@ -46,18 +47,27 @@ func GenerateCode(n int) string {
 }
 
 func LoadENVs() {
-	viper.SetConfigFile(".env")
-	if err := viper.ReadInConfig(); err != nil {
-		LogMessage{Title: "[MAIN>UTILS] Error on LoadENVs()", Body: err.Error()}.Error()
-	}
-	MANDRILL = viper.GetString("MANDRILL")
-	FROM = viper.GetString("FROM")
+	MANDRILL = GodotEnv("MANDRILL")
+	FROM = GodotEnv("FROM")
 }
 
 func CheckToSend(emails string) string {
-	env := viper.GetString("ENV")
+	env := GodotEnv("ENV")
 	if env == "DEVELOPMENT" {
-		return strings.ToLower(viper.GetString("EMAIL_DEV"))
+		return strings.ToLower(GodotEnv("EMAIL_DEV"))
 	}
 	return strings.ToLower(emails)
+}
+
+func GodotEnv(key string) string {
+	var err error
+	if os.Getenv("env") == "development" {
+		return os.Getenv(key)
+	} else {
+		err = godotenv.Load(".env.production")
+		if err != nil {
+			LogMessage{Title: "[MAIN>UTILS] Error on LoadENVs()", Body: err.Error()}.Error()
+		}
+		return os.Getenv(key)
+	}
 }

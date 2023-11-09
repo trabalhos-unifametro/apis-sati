@@ -2,7 +2,6 @@ package database
 
 import (
 	"apis-sati/utils"
-	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"time"
@@ -10,7 +9,7 @@ import (
 
 func OpenConnection() *gorm.DB {
 	var db *gorm.DB
-	str := viper.GetString("CONNECTION_DB")
+	str := utils.GodotEnv("CONNECTION_DB")
 	database, err := gorm.Open(postgres.Open(str), &gorm.Config{
 		NowFunc: func() time.Time {
 			ti, _ := time.LoadLocation("UTC")
