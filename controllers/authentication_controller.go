@@ -126,7 +126,7 @@ func RecoverPassword(c *fiber.Ctx) error {
 	}
 
 	user.PasswordDigest = utils.EncryptPassword(dataUser.NewPassword)
-	if user.UpdatePassword() {
+	if user.ResetPassword() {
 		if err := emails.SuccessfulRecoverPassword(user); err == nil {
 			return c.Status(fiber.StatusOK).JSON("Nova senha atualizada com sucesso!")
 		} else {
@@ -150,7 +150,7 @@ func UpdateDataUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON("Identificador do usuário está incorreto!")
 		}
 
-		if exists := user.FindUserByEmailAndID(); exists {
+		if exists := user.FindUserByEmailAndNotID(); exists {
 			return c.Status(fiber.StatusBadRequest).JSON("Email já está em uso, escolha outro.")
 		}
 
@@ -163,6 +163,42 @@ func UpdateDataUser(c *fiber.Ctx) error {
 		}
 
 		return c.Status(fiber.StatusOK).JSON("Dados atualizados com sucesso!")
+	} else {
+		return c.Status(fiber.StatusUnauthorized).JSON("Você não tem acesso a essa rota ")
+	}
+}
+
+func ChangePassword(c *fiber.Ctx) error {
+	if session, err := ValidateTokenSession(c); err == nil {
+		body := c.Body()
+		dataUser := models.DataUser{}
+		user := models.User{}
+
+		if err := json.Unmarshal(body, &dataUser); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON("Estrutura de dados incorreta!")
+		}
+
+		if uint(session.UserID) != dataUser.ID {
+			return c.Status(fiber.StatusBadRequest).JSON("Usuário ID incorreto!")
+		}
+
+		user.ID = dataUser.ID
+
+		if exists := user.FindUserByID(); exists == false {
+			return c.Status(fiber.StatusBadRequest).JSON("Usuário não foi encontrado.")
+		}
+
+		if isValid, message := dataUser.ValidationChangePassword(); !isValid {
+			return c.Status(fiber.StatusBadRequest).JSON(message)
+		}
+
+		user.PasswordDigest = utils.EncryptPassword(dataUser.NewPassword)
+
+		if success := user.UpdatePassword(); success {
+			return c.Status(fiber.StatusOK).JSON("Nova senha salva com sucesso!")
+		} else {
+			return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar atualizar senha.")
+		}
 	} else {
 		return c.Status(fiber.StatusUnauthorized).JSON("Você não tem acesso a essa rota ")
 	}

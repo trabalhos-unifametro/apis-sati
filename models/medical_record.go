@@ -134,7 +134,7 @@ func (m *MedicalRecord) GetMedicalRecordByID() (error, ResponseMedicalRecord) {
 			m.allergy, u.name as unit_name, u.id as unit_id`).
 		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
 		Joins("LEFT JOIN units u ON u.id = m.unit_id").
-		Joins("LEFT JOIN addresses a ON a.id = p.address_id").
+		Joins("LEFT JOIN address a ON a.id = p.address_id").
 		Joins("LEFT JOIN cities c ON c.id = a.city_id").
 		Joins("LEFT JOIN states s ON s.id = a.state_id").
 		Where("m.id = ?", m.ID).

@@ -30,6 +30,7 @@ func Routes() *fiber.App {
 
 			// USER ROUTES =============================================================================
 			v1.Put("/user/update", controllers.UpdateDataUser)
+			v1.Put("/user/change_password", controllers.ChangePassword)
 
 			// DASHBOARD ROUTES ========================================================================
 			v1.Get("/dashboard/units/totalizators", controllers.TotalizatorsUnitsDashboard)
@@ -52,6 +53,10 @@ func Routes() *fiber.App {
 
 			// STATUS ROUTES ===========================================================================
 			v1.Get("/status/list", controllers.ListStatusPatients)
+
+			// NOTIFICATIONS ROUTES ====================================================================
+			v1.Get("/notifications/list/:userID", controllers.ListNotifications)
+			v1.Put("/notifications/read/:userID", controllers.ReadNotifications)
 		}
 	}
 

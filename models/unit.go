@@ -250,7 +250,7 @@ func (u *Unit) GetListPatientsByUnit(patientName, situationPatient, sortByPatien
 			a.street, a.neighborhood, a.number, a.complement, a.zip_code, c.name as city, s.abbreviation as state`).
 		Joins("LEFT JOIN medical_records m ON m.unit_id = u.id").
 		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
-		Joins("LEFT JOIN addresses a ON a.id = p.address_id").
+		Joins("LEFT JOIN address a ON a.id = p.address_id").
 		Joins("LEFT JOIN cities c ON c.id = a.city_id").
 		Joins("LEFT JOIN states s ON s.id = a.state_id").
 		Where(where).

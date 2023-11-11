@@ -180,7 +180,7 @@ func (p *Patient) GetListPatients(patientName, situationPatient, sortByPatient s
 		Joins("LEFT JOIN units u ON u.id = m.unit_id").
 		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
 		Joins("LEFT JOIN status st ON st.id = m.status_id").
-		Joins("LEFT JOIN addresses a ON a.id = p.address_id").
+		Joins("LEFT JOIN address a ON a.id = p.address_id").
 		Joins("LEFT JOIN cities c ON c.id = a.city_id").
 		Joins("LEFT JOIN states s ON s.id = a.state_id").
 		Where(where).

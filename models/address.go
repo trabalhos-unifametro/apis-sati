@@ -21,3 +21,7 @@ type Address struct {
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
+
+func (Address) TableName() string {
+	return "address"
+}
