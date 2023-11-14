@@ -5,12 +5,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var (
-	MANDRILL string
+	SMTP     string
 	FROM     string
+	PORT     int
+	USERNAME string
+	PASSWORD string
 )
 
 func IsEmpty(value string) bool {
@@ -36,19 +41,24 @@ func ComparePassword(password1, password2 string) error {
 	)
 }
 
-func GenerateCode(n int) string {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+func GenerateCode(length int) string {
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.Seed(time.Now().UnixNano())
 
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	code := make([]byte, length)
+	for i := range code {
+		code[i] = charset[rand.Intn(len(charset))]
 	}
-	return string(b)
+
+	return string(code)
 }
 
 func LoadENVs() {
-	MANDRILL = GodotEnv("MANDRILL")
-	FROM = GodotEnv("FROM")
+	SMTP = GodotEnv("SMTP_EMAIL")
+	FROM = GodotEnv("FROM_EMAIL")
+	USERNAME = GodotEnv("USERNAME_EMAIL")
+	PASSWORD = GodotEnv("PASSWORD_EMAIL")
+	PORT, _ = strconv.Atoi(GodotEnv("PORT_EMAIL"))
 }
 
 func CheckToSend(emails string) string {

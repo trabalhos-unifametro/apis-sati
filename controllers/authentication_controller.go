@@ -94,12 +94,8 @@ func ConfirmCode(c *fiber.Ctx) error {
 	if utils.IsEmpty(user.Email) || utils.IsEmpty(user.CodeRecovery) {
 		return c.Status(fiber.StatusBadRequest).JSON("É obrigatório informar o email e o código.")
 	}
-
-	if err := user.FindByEmail(); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON("Usuário não cadastrado na base.")
-	}
-
-	if user.ConfirmCodeRecover() {
+	confirm := user.ConfirmCodeRecover()
+	if confirm {
 		return c.Status(fiber.StatusOK).JSON("Código validado com sucesso!")
 	} else {
 		return c.Status(fiber.StatusBadRequest).JSON("Erro ao tentar validar código.")

@@ -39,7 +39,7 @@ func SendEmailCodeRandom(user models.User) error {
     </p>`)
 
 	template := MountLayoutTemplateEmail("Código para recuperação de senha", body)
-	_, err := MountEmail(template, "[S.A.T.I] - Código de verificação.", utils.CheckToSend(user.Email))
+	err := MountEmail(template, "[S.A.T.I] - Código de verificação.", utils.CheckToSend(user.Email))
 
 	return err
 }
@@ -55,7 +55,7 @@ func SuccessfulRecoverPassword(user models.User) error {
 	`)
 
 	template := MountLayoutTemplateEmail("Senha recuperada com sucesso.", body)
-	_, err := MountEmail(template, "[S.A.T.I] - Recuperação de senha.", utils.CheckToSend(user.Email))
+	err := MountEmail(template, "[S.A.T.I] - Recuperação de senha.", utils.CheckToSend(user.Email))
 
 	return err
 }

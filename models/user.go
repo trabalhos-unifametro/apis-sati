@@ -3,7 +3,6 @@ package models
 import (
 	"apis-sati/database"
 	"apis-sati/utils"
-	"fmt"
 	"gorm.io/gorm"
 	"regexp"
 	"time"
@@ -56,15 +55,10 @@ func (u *User) FindByEmail() error {
 
 func (u *User) FindByEmailAndCodeRecovery() error {
 	db := database.OpenConnection()
-	var dateCurrent = time.Now().Format("2006-01-02")
-	var minutes = time.Now().Minute()
-	where := fmt.Sprint(`email ILIKE '`, u.Email, `'`,
-		` AND code_recovery = '`, u.CodeRecovery, `'`,
-		`AND expiration_code 
-			BETWEEN '`, dateCurrent, ' ', minutes-5, `:00' AND '`, dateCurrent, ' ', minutes, `:00'`)
 	err := db.Table("users").
 		Select("id, name, role, email, cellphone, password_digest, password, created_at").
-		Where(where).Find(&u).Error
+		Where("email ILIKE ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.Email, u.CodeRecovery).
+		Find(&u).Error
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on *User.FindByEmailAndCodeRecovery()", Body: err.Error()}.Error()
 	}
@@ -80,7 +74,7 @@ func (u *User) SaveCodeRecover() bool {
 	var codeHasSave bool
 	err := db.Table("users").
 		Where("id = ?", u.ID).
-		Updates(map[string]interface{}{"code_recovery": u.CodeRecovery, "expiration_code": time.Now()}).Error
+		Updates(map[string]interface{}{"code_recovery": u.CodeRecovery, "expiration_code": time.Now().Add(time.Minute * 5)}).Error
 	if err != nil {
 		codeHasSave = false
 	} else {
@@ -95,15 +89,10 @@ func (u *User) SaveCodeRecover() bool {
 
 func (u *User) ConfirmCodeRecover() bool {
 	db := database.OpenConnection()
-	var dateCurrent = time.Now().Format("2006-01-02")
-	var minutes = time.Now().Minute()
-	where := fmt.Sprint(`email ILIKE `, u.Email, `
-			AND code_recovery = '`, u.CodeRecovery, `'
-			AND expiration_code 
-			BETWEEN '`, dateCurrent, ' ', minutes-5, `:00' AND '`, dateCurrent, ' ', minutes, `:00'`)
 	err := db.Table("users").
 		Select("id").
-		Where(where).Find(&u).Error
+		Where("email ILIKE ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.Email, u.CodeRecovery).
+		Find(&u).Error
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on *User.ConfirmCodeRecover()", Body: err.Error()}.Error()
 	}
@@ -120,10 +109,10 @@ func (u *User) ConfirmCodeRecover() bool {
 
 func (u DataUser) ValidationRecoverPassword() (bool, string) {
 
-	regLowerCase, _ := regexp.Compile(`[A-Z]`)
-	regUpperCase, _ := regexp.Compile(`[A-Z]`)
-	regSpecialCharacters, _ := regexp.Compile("[`!@#$%^&*()_+-=[]{};':\"|,.<>/?~]")
-	regNumbers, _ := regexp.Compile(`[0-9]`)
+	regLowerCase := regexp.MustCompile(`[A-Z]`)
+	regUpperCase := regexp.MustCompile(`[A-Z]`)
+	regSpecialCharacters := regexp.MustCompile(`[!@#$%^&*()_+\-=[\]{};':"|,.<>/?~]`)
+	regNumbers := regexp.MustCompile(`[0-9]`)
 
 	if utils.IsEmpty(u.Email) {
 		return false, "Por favor, informe o email."
@@ -160,26 +149,17 @@ func (u DataUser) ValidationRecoverPassword() (bool, string) {
 
 func (u *User) ResetPassword() bool {
 	db := database.OpenConnection()
-	var success bool
-	var dateCurrent = time.Now().Format("2006-01-02")
-	var minutes = time.Now().Minute()
-	where := fmt.Sprint(`id = `, u.ID, `
-			AND code_recovery = '`, u.CodeRecovery, `'
-			AND expiration_code 
-			BETWEEN '`, dateCurrent, ' ', minutes-10, `:00' AND '`, dateCurrent, ' ', minutes, `:00'`)
-	err := db.Table("users").
-		Where(where).
-		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest, "updated_at": time.Now()}).Error
-	if err != nil {
-		success = false
-	} else {
-		success = true
+	result := db.Table("users").
+		Where("id = ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.ID, u.CodeRecovery).
+		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest, "updated_at": time.Now()})
+	if result.Error != nil {
+		utils.LogMessage{Title: "[MODELS>USER] Error on *User.ResetPassword()", Body: result.Error.Error()}.Error()
 	}
-	if err = database.CloseConnection(db); err != nil {
+	if err := database.CloseConnection(db); err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.ResetPassword()", Body: err.Error()}.Error()
 	}
 
-	return success
+	return result.RowsAffected > 0
 }
 
 func (u *User) FindUserByEmailAndNotID() bool {
@@ -189,7 +169,7 @@ func (u *User) FindUserByEmailAndNotID() bool {
 		Select("(CASE WHEN COUNT(*) > 0 THEN true ELSE false END) as exists").
 		Where("email ILIKE ? AND id <> ?", u.Email, u.ID).
 		Limit(1).
-		Scan(&exists).Error
+		Find(&exists).Error
 
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on *User.FindUserByEmailAndID()", Body: err.Error()}.Error()
@@ -222,6 +202,7 @@ func (u *User) UpdatePassword() bool {
 	db := database.OpenConnection()
 	var success bool
 	err := db.Table("users").
+		Select("id").
 		Where("id = ? ", u.ID).
 		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest, "updated_at": time.Now()}).Error
 	if err != nil {
@@ -243,7 +224,7 @@ func (u *User) FindUserByID() bool {
 		Select("(CASE WHEN COUNT(*) > 0 THEN true ELSE false END) as exists").
 		Where("id = ?", u.ID).
 		Limit(1).
-		Scan(&exists).Error
+		Find(&exists).Error
 
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on *User.FindUserByID()", Body: err.Error()}.Error()
