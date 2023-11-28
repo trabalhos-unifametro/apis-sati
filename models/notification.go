@@ -44,7 +44,7 @@ func (n Notification) GetListNotificationsByUserID(userID int) (error, []Respons
 				coalesce(unit_id, 0) as unit_id, type,
    			(CASE WHEN `, userID, ` = ANY(users_id_read) THEN true ELSE false END) as read`)
 
-	err := db.Table("notifications").
+	err := db.Table("sati.notifications").
 		Select(columns).
 		Order("created_at DESC").
 		Scan(&notifications).Error
@@ -62,11 +62,11 @@ func (n Notification) GetListNotificationsByUserID(userID int) (error, []Respons
 func (n *Notification) ReturnUsersReadNotificationByID() []int {
 	db := database.OpenConnection()
 	var usersIDRead []int
-	err := db.Table("notifications").
+	err := db.Table("sati.notifications").
 		Select("users_id_read").
 		Where("id = ?", n.ID).
 		Limit(1).
-		Scan(&usersIDRead).Error
+		Find(&usersIDRead).Error
 
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>NOTIFICATION] Error on *Notification.ReturnUsersReadNotificationByID()", Body: err.Error()}.Error()
@@ -91,7 +91,7 @@ func (n *Notification) ReadNotificationByUserID(userID int) bool {
 	}
 	result := strings.Join(strList, ",")
 
-	err := db.Table("notifications").
+	err := db.Table("sati.notifications").
 		Where("id = ?", n.ID).
 		Update("users_id_read", fmt.Sprint(`{`, result, `}`)).Error
 	if err != nil {

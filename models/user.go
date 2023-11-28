@@ -40,7 +40,7 @@ type DataUser struct {
 
 func (u *User) FindByEmail() error {
 	db := database.OpenConnection()
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("id, name, role, email, cellphone, password_digest, created_at").
 		Where("email ILIKE ?", u.Email).Find(&u).Error
 	if err != nil {
@@ -55,7 +55,7 @@ func (u *User) FindByEmail() error {
 
 func (u *User) FindByEmailAndCodeRecovery() error {
 	db := database.OpenConnection()
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("id, name, role, email, cellphone, password_digest, password, created_at").
 		Where("email ILIKE ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.Email, u.CodeRecovery).
 		Find(&u).Error
@@ -72,7 +72,7 @@ func (u *User) FindByEmailAndCodeRecovery() error {
 func (u *User) SaveCodeRecover() bool {
 	db := database.OpenConnection()
 	var codeHasSave bool
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Where("id = ?", u.ID).
 		Updates(map[string]interface{}{"code_recovery": u.CodeRecovery, "expiration_code": time.Now().Add(time.Minute * 5)}).Error
 	if err != nil {
@@ -89,7 +89,7 @@ func (u *User) SaveCodeRecover() bool {
 
 func (u *User) ConfirmCodeRecover() bool {
 	db := database.OpenConnection()
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("id").
 		Where("email ILIKE ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.Email, u.CodeRecovery).
 		Find(&u).Error
@@ -149,7 +149,7 @@ func (u DataUser) ValidationRecoverPassword() (bool, string) {
 
 func (u *User) ResetPassword() bool {
 	db := database.OpenConnection()
-	result := db.Table("users").
+	result := db.Table("sati.users").
 		Where("id = ? AND code_recovery = ? AND to_char(expiration_code, 'YYYY-MM-DD HH24:MI') >= to_char(current_timestamp, 'YYYY-MM-DD HH24:MI')", u.ID, u.CodeRecovery).
 		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest, "updated_at": time.Now()})
 	if result.Error != nil {
@@ -165,7 +165,7 @@ func (u *User) ResetPassword() bool {
 func (u *User) FindUserByEmailAndNotID() bool {
 	db := database.OpenConnection()
 	var exists bool
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("(CASE WHEN COUNT(*) > 0 THEN true ELSE false END) as exists").
 		Where("email ILIKE ? AND id <> ?", u.Email, u.ID).
 		Limit(1).
@@ -185,7 +185,7 @@ func (u *User) FindUserByEmailAndNotID() bool {
 func (u *User) Update() error {
 	db := database.OpenConnection()
 
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Where("id = ? ", u.ID).
 		Updates(map[string]interface{}{"email": u.Email, "cellphone": u.Cellphone, "updated_at": time.Now()}).Error
 	if err != nil {
@@ -201,16 +201,15 @@ func (u *User) Update() error {
 func (u *User) UpdatePassword() bool {
 	db := database.OpenConnection()
 	var success bool
-	err := db.Table("users").
-		Select("id").
+	result := db.Table("sati.users").
 		Where("id = ? ", u.ID).
-		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest, "updated_at": time.Now()}).Error
-	if err != nil {
+		Updates(map[string]interface{}{"password_digest": u.PasswordDigest, "password": u.PasswordDigest})
+	if result.Error != nil || result.RowsAffected == 0 {
 		success = false
 	} else {
 		success = true
 	}
-	if err = database.CloseConnection(db); err != nil {
+	if err := database.CloseConnection(db); err != nil {
 		utils.LogMessage{Title: "[MODELS>USER] Error on database.CloseConnection(db) > *User.UpdatePassword()", Body: err.Error()}.Error()
 	}
 
@@ -220,7 +219,7 @@ func (u *User) UpdatePassword() bool {
 func (u *User) FindUserByID() bool {
 	db := database.OpenConnection()
 	var exists bool
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("(CASE WHEN COUNT(*) > 0 THEN true ELSE false END) as exists").
 		Where("id = ?", u.ID).
 		Limit(1).
@@ -239,7 +238,7 @@ func (u *User) FindUserByID() bool {
 
 func (u *User) GetPasswordByID() error {
 	db := database.OpenConnection()
-	err := db.Table("users").
+	err := db.Table("sati.users").
 		Select("password_digest").
 		Where("id = ?", u.ID).Find(&u).Error
 	if err != nil {

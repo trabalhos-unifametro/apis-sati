@@ -24,14 +24,14 @@ type ResponseStatus struct {
 }
 
 func (Status) TableName() string {
-	return "status"
+	return "sati.status"
 }
 
 func (s *Status) GetListStatus(tableName string) (error, []ResponseStatus) {
 	db := database.OpenConnection()
 	var status []ResponseStatus
 
-	err := db.Table("status").
+	err := db.Table("sati.status").
 		Select("id, name").
 		Where(`"table" ILIKE ?`, tableName).
 		Scan(&status).Error

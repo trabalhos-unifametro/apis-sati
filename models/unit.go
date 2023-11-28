@@ -54,6 +54,7 @@ type ResponsePatientByUnit struct {
 	UnitID                      int       `json:"unit_id"`
 	HospitalizationCode         int       `json:"hospitalization_code"`
 	PatientName                 string    `json:"patient_name"`
+	CreatedAt                   time.Time `json:"created_at"`
 	ExpectedHospitalizationTime time.Time `json:"expected_hospitalization_time"`
 	CurrentHospitalizationTime  time.Time `json:"current_hospitalization_time"`
 	Situation                   string    `json:"situation"`
@@ -93,7 +94,7 @@ func (u *Unit) TotalizatorsDashboard(unitName, occupation string) (error, UnitTo
 		where += "current_patient_capacity = max_patient_capacity"
 	}
 
-	err := db.Table("units").
+	err := db.Table("sati.units").
 		Select(`COUNT(*) as total,
 			SUM(CASE WHEN current_patient_capacity >= max_patient_capacity THEN 1 ELSE 0 END) as no_vacancy,
 			SUM(CASE WHEN current_patient_capacity < max_patient_capacity THEN 1 ELSE 0 END) as with_vacancies`).
@@ -112,11 +113,11 @@ func (u *Unit) TotalizatorsDashboard(unitName, occupation string) (error, UnitTo
 func (u *Unit) GraphicDashboard() (error, UnitGraphicDashboard) {
 	db := database.OpenConnection()
 	var graphic UnitGraphicDashboard
-	err := db.Table("units").
+	err := db.Table("sati.units").
 		Select(`
 			SUM(CASE WHEN current_patient_capacity >= max_patient_capacity THEN 1 ELSE 0 END) as no_vacancy,
 			SUM(CASE WHEN current_patient_capacity < max_patient_capacity THEN 1 ELSE 0 END) as with_vacancies`).
-		Find(&graphic).Error
+		Scan(&graphic).Error
 	if err != nil {
 		utils.LogMessage{Title: "[MODELS>UNIT] Error on *Unit.GraphicDashboard()", Body: err.Error()}.Error()
 	}
@@ -167,11 +168,11 @@ func (u *Unit) GetListUnits(unitName, occupation, sortByUnit, sortByOccupation s
 		order += "number_of_vacancies DESC"
 	}
 
-	err := db.Table("units u").
+	err := db.Table("sati.units u").
 		Select(`u.id, u.name, u.current_patient_capacity, u.max_patient_capacity,
 			(u.max_patient_capacity - u.current_patient_capacity) as number_of_vacancies,
 			s.name as status`).
-		Joins("LEFT JOIN status s ON s.id = u.status_id").
+		Joins("LEFT JOIN sati.status s ON s.id = u.status_id").
 		Where(where).
 		Order(order).
 		Scan(&units).Error
@@ -196,17 +197,17 @@ func (u *Unit) Totalizators(patientName, situationPatient string) (error, UnitTo
 	}
 
 	if strings.ToUpper(situationPatient) == "DENTRO DO PERÍODO" {
-		where += " AND m.current_hospitalization_time <= m.expected_hospitalization_time"
+		where += " AND current_timestamp <= m.expected_hospitalization_time"
 	} else if strings.ToUpper(situationPatient) == "FORA DO PERÍODO" {
-		where += " AND m.current_hospitalization_time > m.expected_hospitalization_time"
+		where += " AND current_timestamp > m.expected_hospitalization_time"
 	}
 
-	err := db.Table("units u").
+	err := db.Table("sati.units u").
 		Select(`DISTINCT u.id, 
 			 u.name as unit_name, u.current_patient_capacity as qtd_patients, u.max_patient_capacity as qtd_max,
 			(u.max_patient_capacity - u.current_patient_capacity) as vacancies`).
-		Joins("LEFT JOIN medical_records m ON m.unit_id = u.id").
-		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
+		Joins("LEFT JOIN sati.medical_records m ON m.unit_id = u.id").
+		Joins("LEFT JOIN sati.patients p ON p.id = m.patient_id").
 		Where(where).
 		Scan(&totalizators).Error
 	if err != nil {
@@ -230,9 +231,9 @@ func (u *Unit) GetListPatientsByUnit(patientName, situationPatient, sortByPatien
 	}
 
 	if strings.ToUpper(situationPatient) == "DENTRO DO PERÍODO" {
-		where += " AND m.current_hospitalization_time <= m.expected_hospitalization_time"
+		where += " AND current_timestamp <= m.expected_hospitalization_time"
 	} else if strings.ToUpper(situationPatient) == "FORA DO PERÍODO" {
-		where += " AND m.current_hospitalization_time > m.expected_hospitalization_time"
+		where += " AND current_timestamp > m.expected_hospitalization_time"
 	}
 
 	if strings.ToUpper(sortByPatient) == "CRESCENTE" {
@@ -241,18 +242,18 @@ func (u *Unit) GetListPatientsByUnit(patientName, situationPatient, sortByPatien
 		order += "p.name DESC"
 	}
 
-	err := db.Table("units u").
+	err := db.Table("sati.units u").
 		Select(`DISTINCT p.id as patient_id,
-			u.id as unit_id, m.hospitalization_code, p.name as patient_name, m.expected_hospitalization_time, m.current_hospitalization_time,
-			(CASE WHEN m.current_hospitalization_time > m.expected_hospitalization_time THEN 'Fora do período' ELSE 'Dentro do período' END) as situation,
-			(CASE WHEN m.current_hospitalization_time > m.expected_hospitalization_time THEN 2 ELSE 1 END) as situation_id,
+			u.id as unit_id, m.created_at, m.hospitalization_code, p.name as patient_name, m.expected_hospitalization_time, m.current_hospitalization_time,
+			(CASE WHEN current_timestamp > m.expected_hospitalization_time THEN 'Fora do período' ELSE 'Dentro do período' END) as situation,
+			(CASE WHEN current_timestamp > m.expected_hospitalization_time THEN 2 ELSE 1 END) as situation_id,
 			m.id as medical_record_id, p.mother_name, p.cpf, p.gender, u.name as unit_name,
 			a.street, a.neighborhood, a.number, a.complement, a.zip_code, c.name as city, s.abbreviation as state`).
-		Joins("LEFT JOIN medical_records m ON m.unit_id = u.id").
-		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
-		Joins("LEFT JOIN address a ON a.id = p.address_id").
-		Joins("LEFT JOIN cities c ON c.id = a.city_id").
-		Joins("LEFT JOIN states s ON s.id = a.state_id").
+		Joins("LEFT JOIN sati.medical_records m ON m.unit_id = u.id").
+		Joins("LEFT JOIN sati.patients p ON p.id = m.patient_id").
+		Joins("LEFT JOIN sati.address a ON a.id = p.address_id").
+		Joins("LEFT JOIN sati.cities c ON c.id = a.city_id").
+		Joins("LEFT JOIN sati.states s ON s.id = a.state_id").
 		Where(where).
 		Order(order).
 		Scan(&list).Error

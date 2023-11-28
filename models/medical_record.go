@@ -81,19 +81,19 @@ func (m *MedicalRecord) GraphicDashboard() (error, []MonthlyChart) {
 		{Month: 7, Year: year}, {Month: 8, Year: year}, {Month: 9, Year: year}, {Month: 10, Year: year}, {Month: 11, Year: year}, {Month: 12, Year: year},
 	}
 	var list []MedicalRecordList
-	err := db.Table("medical_records").
+	err := db.Table("sati.medical_records").
 		Select(`id, to_char(created_at, 'MM')::int as month_of_entry_to_uti,
 			(CASE
-					WHEN expected_hospitalization_time > current_hospitalization_time
+					WHEN expected_hospitalization_time > current_timestamp
 					THEN to_char(expected_hospitalization_time, 'MM')::int
-					ELSE to_char(current_hospitalization_time, 'MM')::int
+					ELSE to_char(current_timestamp, 'MM')::int
 			END) as month_of_exit_to_uti,
 			(CASE
-					WHEN expected_hospitalization_time > current_hospitalization_time
+					WHEN expected_hospitalization_time > current_timestamp
 					THEN to_char(expected_hospitalization_time, 'YYYY')::int
-					ELSE to_char(current_hospitalization_time, 'YYYY')::int
+					ELSE to_char(current_timestamp, 'YYYY')::int
 			END) as year_of_exit_to_uti,
-			(SELECT SUM(max_patient_capacity) as max_patient_capacity FROM units WHERE to_char(current_date, 'YYYY') = to_char(created_at, 'YYYY')) as total_vacancies_units`).
+			(SELECT SUM(max_patient_capacity) as max_patient_capacity FROM sati.units WHERE to_char(current_date, 'YYYY') = to_char(created_at, 'YYYY')) as total_vacancies_units`).
 		Where(`to_char(current_date, 'YYYY') = to_char(created_at, 'YYYY')`).
 		Scan(&list).Error
 
@@ -126,17 +126,17 @@ func (m *MedicalRecord) GetMedicalRecordByID() (error, ResponseMedicalRecord) {
 	db := database.OpenConnection()
 	var medicalRecord ResponseMedicalRecord
 
-	err := db.Table("medical_records m").
+	err := db.Table("sati.medical_records m").
 		Select(`DISTINCT p.id,
 			m.hospitalization_code, m.opening_date, p.name as patient_name, p.date_of_birth, p.gender,
 			a.street, a.neighborhood, a.number, a.zip_code, a.complement, c.name as city, s.abbreviation as state,
 			p.telephone, p.email, m.caregiver_contact, m.doctors, m.schooling, m.occupation, m.limitation,
 			m.allergy, u.name as unit_name, u.id as unit_id`).
-		Joins("LEFT JOIN patients p ON p.id = m.patient_id").
-		Joins("LEFT JOIN units u ON u.id = m.unit_id").
-		Joins("LEFT JOIN address a ON a.id = p.address_id").
-		Joins("LEFT JOIN cities c ON c.id = a.city_id").
-		Joins("LEFT JOIN states s ON s.id = a.state_id").
+		Joins("LEFT JOIN sati.patients p ON p.id = m.patient_id").
+		Joins("LEFT JOIN sati.units u ON u.id = m.unit_id").
+		Joins("LEFT JOIN sati.address a ON a.id = p.address_id").
+		Joins("LEFT JOIN sati.cities c ON c.id = a.city_id").
+		Joins("LEFT JOIN sati.states s ON s.id = a.state_id").
 		Where("m.id = ?", m.ID).
 		Scan(&medicalRecord).Error
 

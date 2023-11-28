@@ -23,5 +23,5 @@ type Address struct {
 }
 
 func (Address) TableName() string {
-	return "address"
+	return "sati.address"
 }

@@ -4,6 +4,7 @@ import (
 	"apis-sati/utils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"time"
 )
 
@@ -14,6 +15,9 @@ func OpenConnection() *gorm.DB {
 		NowFunc: func() time.Time {
 			ti, _ := time.LoadLocation("UTC")
 			return time.Now().In(ti)
+		},
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix: "sati.",
 		},
 	})
 	if err != nil {
